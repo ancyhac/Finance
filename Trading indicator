@@ -1,1 +1,73 @@
-Trading indicator
+//@version=5
+indicator('Alpha Annachi', overlay=true)
+
+// dot printing
+smaValue=ta.ema(close, 20)
+plot(smaValue,title="20 day MA",color=color.yellow)
+crossunder = ta.crossunder(smaValue,close) 
+crossover =  ta.crossover(smaValue,close) 
+plotshape(crossunder ? smaValue:na,"Circle",shape.circle,location.belowbar, color.green)
+plotshape(crossover ? smaValue:na,"Circle",shape.circle,location.abovebar, color.red)
+plotshape((close > smaValue) and (open > smaValue or close < smaValue)? smaValue : na, "Circle", shape.circle, location.belowbar, color.green)
+plotshape((close < smaValue) and (open > smaValue or close < smaValue) ? smaValue : na, "Circle", shape.circle, location.abovebar, color.red)
+
+
+//supertrend
+Periods = input(title='ATR Period', defval=10)
+S_src = input(hl2, title='Source')
+Multiplier = input.float(title='ATR Multiplier', step=0.1, defval=3.0)
+changeATR = true
+showsignals = true
+highlighting = true
+atr2 = ta.sma(ta.tr, Periods)
+atr = changeATR ? ta.atr(Periods) : atr2
+up = S_src - Multiplier * atr
+up1 = nz(up[1], up)
+up := close[1] > up1 ? math.max(up, up1) : up
+dn = S_src + Multiplier * atr
+dn1 = nz(dn[1], dn)
+dn := close[1] < dn1 ? math.min(dn, dn1) : dn
+trend = 1
+trend := nz(trend[1], trend)
+trend := trend == -1 and close > dn1 ? 1 : trend == 1 and close < up1 ? -1 : trend
+upPlot = plot(trend == 1 ? up : na, title='Up Trend', style=plot.style_linebr, color=color.new(color.green, 0))
+dnPlot = plot(trend == 1 ? na : dn, title='Down Trend', style=plot.style_linebr, color=color.new(color.red, 0))
+mPlot = plot(ohlc4, title='Line', style=plot.style_linebr, linewidth=3, color=color.yellow)
+shortFillColor = highlighting ? trend == -1 ? color.red : color.white : color.white
+fill(mPlot, upPlot, title="UpTrend Highligter", color=color.rgb(76,175,80,transp = 75))
+fill(mPlot, dnPlot, title="DownTrend Highligter", color=color.rgb(255,82,82,transp = 75))
+
+
+//Trackline
+src = close
+l = input(9, title='VMA Length')
+std = true
+k = 1.0 / l
+pdm = 0.0
+pdm := math.max(src - src[1], 0)
+mdm = 0.0
+mdm := math.max(src[1] - src, 0)
+pdmS = 0.0
+pdmS := (1 - k) * nz(pdmS[1]) + k * pdm
+mdmS = 0.0
+mdmS := (1 - k) * nz(mdmS[1]) + k * mdm
+s = pdmS + mdmS
+pdi = pdmS / s
+mdi = mdmS / s
+pdiS = 0.0
+pdiS := (1 - k) * nz(pdiS[1]) + k * pdi
+mdiS = 0.0
+mdiS := (1 - k) * nz(mdiS[1]) + k * mdi
+d = math.abs(pdiS - mdiS)
+s1 = pdiS + mdiS
+iS = 0.0
+iS := (1 - k) * nz(iS[1]) + k * d / s1
+hhv = ta.highest(iS, l)
+llv = ta.lowest(iS, l)
+d1 = hhv - llv
+vI = (iS - llv) / d1
+vma = 0.0
+vma := (1 - k * vI) * nz(vma[1]) + k * vI * src
+vmaC = vma > vma[1] ? color.green : vma < vma[1] ? color.red : vma == vma[1] ? color.orange : na
+plot(vma, color=std ? vmaC : na, linewidth=2, title='VMA')
+
